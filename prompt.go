@@ -49,3 +49,33 @@ func mustMarshalTextPart(text string) json.RawMessage {
 	}
 	return b
 }
+
+// MarshalJSON returns the underlying union value. Without this, json.Marshal
+// ignores the unexported union field and produces {}.
+func (i SessionPromptJSONBody_Parts_Item) MarshalJSON() ([]byte, error) {
+	if len(i.union) == 0 {
+		return []byte("null"), nil
+	}
+	return i.union, nil
+}
+
+// UnmarshalJSON stores the raw JSON for later round-tripping.
+func (i *SessionPromptJSONBody_Parts_Item) UnmarshalJSON(data []byte) error {
+	i.union = data
+	return nil
+}
+
+// MarshalJSON returns the underlying union value. Without this, json.Marshal
+// ignores the unexported union field and produces {}.
+func (i SessionPromptAsyncJSONBody_Parts_Item) MarshalJSON() ([]byte, error) {
+	if len(i.union) == 0 {
+		return []byte("null"), nil
+	}
+	return i.union, nil
+}
+
+// UnmarshalJSON stores the raw JSON for later round-tripping.
+func (i *SessionPromptAsyncJSONBody_Parts_Item) UnmarshalJSON(data []byte) error {
+	i.union = data
+	return nil
+}
