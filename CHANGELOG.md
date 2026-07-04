@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0](https://github.com/codeownersnet/opencode-go-sdk/compare/v1.0.0...v1.1.0) (2026-07-04)
+
+
+### Features
+
+* add 5 example programs demonstrating SDK usage patterns ([5bd1bdc](https://github.com/codeownersnet/opencode-go-sdk/commit/5bd1bdc8d0aa6614b34dc0cb083bbcb33f41b7eb))
+* add 5 example programs demonstrating SDK usage patterns ([2a58c82](https://github.com/codeownersnet/opencode-go-sdk/commit/2a58c821d335baaf238733c97585a18b85dbf663))
+
 ## 1.0.0 (2026-07-04)
 
 
