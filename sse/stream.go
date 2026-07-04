@@ -8,6 +8,9 @@ import (
 // Stream is a generic iterator over SSE events. Each call to Next reads one
 // SSE frame and decodes its data payload as JSON into type T.
 //
+// Stream is not safe for concurrent use; all methods must be called from a
+// single goroutine.
+//
 // Typical usage:
 //
 //	stream, _ := sse.SubscribeGlobalEvents(ctx, client)
@@ -47,24 +50,25 @@ func (s *Stream[T]) Next() bool {
 	if s.done {
 		return false
 	}
-	if !s.r.next() {
-		s.done = true
-		if s.err == nil {
-			s.err = s.r.err
+	for {
+		if !s.r.next() {
+			s.done = true
+			if s.err == nil {
+				s.err = s.r.err
+			}
+			return false
 		}
-		return false
+		data := s.r.data()
+		if len(data) == 0 {
+			continue
+		}
+		if err := json.Unmarshal(data, &s.current); err != nil {
+			s.err = err
+			s.done = true
+			return false
+		}
+		return true
 	}
-	data := s.r.data()
-	if len(data) == 0 {
-		// Empty data frame; skip.
-		return s.Next()
-	}
-	if err := json.Unmarshal(data, &s.current); err != nil {
-		s.err = err
-		s.done = true
-		return false
-	}
-	return true
 }
 
 // Event returns the most recent event decoded by Next.

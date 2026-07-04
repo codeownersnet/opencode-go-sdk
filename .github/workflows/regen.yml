@@ -18,7 +18,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.26'
 
       - name: Install oapi-codegen
         run: go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
@@ -32,9 +32,24 @@ jobs:
           CHANGED=$(git diff --name-only)
           echo "Changed files:"
           echo "$CHANGED"
-          if echo "$CHANGED" | grep -vE '^(\.gen\.go$|opencode-spec\.json$)' | grep -qE '\.(go|json|yaml|md)$'; then
+          if echo "$CHANGED" | grep -vE '\.gen\.go$|^opencode-spec\.json$' | grep -qE '\.(go|json|yaml)$'; then
             echo "::error::Regen touched files outside *.gen.go and opencode-spec.json — check generator config."
             exit 1
+          fi
+
+      - name: Check docs sync warning
+        run: |
+          # If endpoints changed, remind to update README.md and API.md.
+          CHANGED=$(git diff --name-only)
+          if echo "$CHANGED" | grep -q 'opencode-spec\.json'; then
+            OPS=$(python3 -c "
+import json
+spec = json.load(open('opencode-spec.json'))
+ops = sum(len([m for m in p if m in ('get','post','put','delete','patch')]) for p in spec['paths'].values())
+paths = len(spec['paths'])
+print(f'{ops} operations across {paths} paths')
+" 2>/dev/null || echo "unknown")
+            echo "::warning::Spec changed — verify that README.md endpoint count and API.md tables are up to date (current spec: $OPS)."
           fi
 
       - name: Create pull request

@@ -1,13 +1,8 @@
 # oapi-codegen configuration for github.com/codeownersnet/opencode-go-sdk
 #
-# The generator is run twice (see Makefile): once for types, once for the
-# client. The `-generate` and `-o` CLI flags override the values below, which
-# is how we split output into types.gen.go and client.gen.go while sharing the
-# package name.
-#
-# Valid `generate` subfields for oapi-codegen v2: echo-server, client, models,
-# embedded-spec. We disable embedded-spec to keep types.gen.go and client.gen.go
-# small; the committed opencode-spec.json is the source of truth.
+# The generator produces a single opencode.gen.go containing both types and
+# client. The committed opencode-spec.json is the source of truth; embedded-spec
+# is disabled to keep the output small.
 package: opencode
 
 generate:

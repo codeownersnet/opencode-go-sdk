@@ -59,9 +59,9 @@ func (i SessionPromptJSONBody_Parts_Item) MarshalJSON() ([]byte, error) {
 	return i.union, nil
 }
 
-// UnmarshalJSON stores the raw JSON for later round-tripping.
+// UnmarshalJSON stores a copy of the raw JSON for later round-tripping.
 func (i *SessionPromptJSONBody_Parts_Item) UnmarshalJSON(data []byte) error {
-	i.union = data
+	i.union = append(i.union[:0], data...)
 	return nil
 }
 
@@ -74,8 +74,8 @@ func (i SessionPromptAsyncJSONBody_Parts_Item) MarshalJSON() ([]byte, error) {
 	return i.union, nil
 }
 
-// UnmarshalJSON stores the raw JSON for later round-tripping.
+// UnmarshalJSON stores a copy of the raw JSON for later round-tripping.
 func (i *SessionPromptAsyncJSONBody_Parts_Item) UnmarshalJSON(data []byte) error {
-	i.union = data
+	i.union = append(i.union[:0], data...)
 	return nil
 }
