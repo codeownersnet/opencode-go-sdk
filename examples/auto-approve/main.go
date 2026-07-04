@@ -44,6 +44,11 @@ func main() {
 	// 2. Create a session.
 	resp, err := client.SessionCreate(ctx, nil, opencode.SessionCreateJSONRequestBody{
 		Title: opencode.Ptr("Auto-approve demo"),
+		Model: &struct {
+			Id         string  `json:"id"`
+			ProviderID string  `json:"providerID"`
+			Variant    *string `json:"variant,omitempty"`
+		}{Id: "big-pickle", ProviderID: "opencode"},
 	})
 	if err != nil {
 		log.Fatalf("create session: %v", err)
@@ -107,6 +112,15 @@ func main() {
 				continue
 			}
 			fmt.Print(d.Properties.Delta)
+
+		case "message.part.delta":
+			d, err := sse.EventAs[opencode.EventMessagePartDelta](ev)
+			if err != nil {
+				continue
+			}
+			if d.Properties.Field == "text" {
+				fmt.Print(d.Properties.Delta)
+			}
 
 		case "session.next.tool.called":
 			tc, err := sse.EventAs[opencode.EventSessionNextToolCalled](ev)

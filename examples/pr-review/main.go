@@ -283,6 +283,17 @@ func main() {
 				}
 			}
 
+		case "message.part.delta": // stream coordinator live (opencode Zen provider)
+			if phase == "coordinator" {
+				d, err := sse.EventAs[opencode.EventMessagePartDelta](ev)
+				if err != nil {
+					continue
+				}
+				if d.Properties.SessionID == coordinatorID && d.Properties.Field == "text" {
+					fmt.Print(d.Properties.Delta)
+				}
+			}
+
 		case "session.idle":
 			si, err := sse.EventAs[opencode.EventSessionIdle](ev)
 			if err != nil {
@@ -338,6 +349,11 @@ func main() {
 func createSession(ctx context.Context, client *opencode.Client, title string) (string, error) {
 	resp, err := client.SessionCreate(ctx, nil, opencode.SessionCreateJSONRequestBody{
 		Title: opencode.Ptr(title),
+		Model: &struct {
+			Id         string  `json:"id"`
+			ProviderID string  `json:"providerID"`
+			Variant    *string `json:"variant,omitempty"`
+		}{Id: "big-pickle", ProviderID: "opencode"},
 	})
 	if err != nil {
 		return "", err

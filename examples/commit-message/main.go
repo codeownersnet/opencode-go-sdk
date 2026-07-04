@@ -74,6 +74,11 @@ func main() {
 	// 3. Create a session and ask for a commit message.
 	createResp, err := client.SessionCreateWithResponse(ctx, nil, opencode.SessionCreateJSONRequestBody{
 		Title: opencode.Ptr("Commit message generator"),
+		Model: &struct {
+			Id         string  `json:"id"`
+			ProviderID string  `json:"providerID"`
+			Variant    *string `json:"variant,omitempty"`
+		}{Id: "big-pickle", ProviderID: "opencode"},
 	})
 	if err != nil {
 		log.Fatalf("create session: %v", err)
