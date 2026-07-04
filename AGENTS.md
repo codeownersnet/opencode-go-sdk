@@ -77,6 +77,21 @@ Never hand-edit generated files. Instead:
 3. If you need a convenience helper for a new endpoint, add it in a plain `.go` file (e.g. `prompt.go`) that references the generated types.
 4. Commit `opencode-spec.json`, `opencode.gen.go`, and your custom helper.
 
+## Keeping docs in sync
+
+When the API changes (endpoints added, removed, renamed, or the operation/path
+count shifts), update both documentation files in the same change:
+
+- **`README.md`** — the endpoint count in the Status section must match the
+  actual number of operations and paths in `opencode-spec.json`.
+- **`API.md`** — the endpoint reference tables must reflect the current spec:
+  every operation listed, summaries accurate, Go method names matching
+  `opencode.gen.go`.
+
+A regen PR that changes the spec surface (`make generate` touches endpoints)
+must include doc updates, or note explicitly that docs are intentionally
+deferred. Reviewers should check this.
+
 ## Releasing
 
 Never tag manually. release-please handles it:
