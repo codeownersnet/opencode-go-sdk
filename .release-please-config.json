@@ -1,12 +1,10 @@
 {
-  "bootstrap-sha": "",
   "include-component-in-tag": false,
   "packages": {
     ".": {
       "release-type": "go",
       "package-name": "opencode-go-sdk",
-      "initial-version": "0.1.0",
-      "changelog-path": "CHANGELOG.md"
+      "initial-version": "0.1.0"
     }
   }
 }
