@@ -1,0 +1,57 @@
+name: regen
+
+on:
+  schedule:
+    # Mondays 03:00 UTC
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  regen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install oapi-codegen
+        run: go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+
+      - name: Pull and regenerate
+        run: make regen
+
+      - name: Check separation guardrail
+        run: |
+          # Assert that only *.gen.go and opencode-spec.json changed.
+          CHANGED=$(git diff --name-only)
+          echo "Changed files:"
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -vE '^(\.gen\.go$|opencode-spec\.json$)' | grep -qE '\.(go|json|yaml|md)$'; then
+            echo "::error::Regen touched files outside *.gen.go and opencode-spec.json — check generator config."
+            exit 1
+          fi
+
+      - name: Create pull request
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b regen/$(date +%Y%m%d)
+          git add opencode.gen.go opencode-spec.json
+          git commit -m "feat: regen from upstream opencode spec"
+          git push origin HEAD
+          gh pr create --title "feat: regen from upstream opencode spec" \
+            --body "Automated regeneration from the upstream opencode OpenAPI spec.
+
+          Review the spec diff (\`opencode-spec.json\`) and the generated code diff (\`opencode.gen.go\`) to see what changed upstream.
+
+          Merging this PR will trigger release-please to bump the version and cut a release." \
+            --label "regen" || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

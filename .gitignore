@@ -1,0 +1,27 @@
+# Binaries
+/examples/examples
+/examples/main
+/bin/
+/dist/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Go
+vendor/
+*.test
+*.out
+coverage.txt
+coverage.html
+
+# Normalized spec is a derived artifact (produced from opencode-spec.json).
+opencode-spec.normalized.json
+
+# oapi-codegen normally regenerates these; keep them committed for reproducible
+# builds but ignore transient backup files.
+*.gen.go.bak
