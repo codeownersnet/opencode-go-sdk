@@ -3,16 +3,18 @@
 // Demonstrates the full ConfigUpdate -> agent-by-name round-trip: GET the
 // current server config, merge in three custom agents (security, performance,
 // code quality) under Config.Agent.AdditionalProperties, PATCH the config
-// back, verify the agents are registered via GET /agent, then create a session
-// that references one of the custom agents by name and stream its response.
+// back, then create a session that references one of the custom agents by name
+// and stream its response.
 //
+// The PATCH updates the server's in-memory config — the custom agent's prompt
+// and model are used by the session even though GET /agent may not list it.
 // This is the pattern that lets prompts live in agent configs on the server
 // rather than being embedded in every SessionPromptAsync call.
 //
-// Caveat: this example mutates the server's config (PATCH /config). The custom
-// agents persist after the example exits. It merges additively (GET -> merge
-// -> PATCH) so existing config is preserved, but it does not restore the
-// original config.
+// Caveat: this example mutates the server's config (PATCH /config). It merges
+// additively (GET -> merge -> PATCH) so existing config is preserved, but it
+// does not restore the original config. The in-memory config does not persist
+// across server restarts.
 //
 // Run against a local opencode server:
 //
@@ -68,14 +70,7 @@ func main() {
 		log.Fatalf("create client: %v", err)
 	}
 
-	// 1. Subscribe to per-instance events before creating sessions.
-	stream, err := sse.SubscribeEvents(ctx, client, nil)
-	if err != nil {
-		log.Fatalf("subscribe: %v", err)
-	}
-	defer stream.Close()
-
-	// 2. GET the current config so we can merge additively.
+	// 1. GET the current config so we can merge additively.
 	cfg, err := getConfig(ctx, client)
 	if err != nil {
 		log.Fatalf("get config: %v", err)
@@ -83,12 +78,13 @@ func main() {
 	fmt.Println("Current config agents:")
 	printAgents(cfg)
 
-	// 3. Merge in the custom agents (additive — existing config preserved).
+	// 2. Merge in the custom agents (additive — existing config preserved).
 	for _, a := range customAgents {
 		mergeAgent(cfg, a.key, a.prompt, a.description)
 	}
 
-	// 4. PATCH the merged config back to the server.
+	// 4. PATCH the merged config back to the server. The agents are now
+	//    available in-memory for session creation.
 	if err := updateConfig(ctx, client, cfg); err != nil {
 		log.Fatalf("update config: %v", err)
 	}
@@ -97,34 +93,25 @@ func main() {
 		fmt.Printf("  %s\n", a.key)
 	}
 
-	// 5. Verify the agents are registered via GET /agent.
-	agents, err := listAgents(ctx, client)
+	// 3. Subscribe to per-instance events after the PATCH so we receive
+	//    events for the session we're about to create.
+	stream, err := sse.SubscribeEvents(ctx, client, nil)
 	if err != nil {
-		log.Fatalf("list agents: %v", err)
+		log.Fatalf("subscribe: %v", err)
 	}
-	fmt.Println("\nRegistered agents (GET /agent):")
-	known := make(map[string]bool, len(customAgents))
-	for _, a := range customAgents {
-		known[a.key] = true
-	}
-	for _, a := range agents {
-		mark := ""
-		if known[a.Name] {
-			mark = " [custom]"
-		}
-		fmt.Printf("  %s%s\n", a.Name, mark)
-	}
-	for _, a := range customAgents {
-		if !known[a.key] || !agentExists(agents, a.key) {
-			log.Printf("warning: agent %q not found — server may require restart to register agents", a.key)
-		}
-	}
+	defer stream.Close()
 
-	// 6. Create a session referencing a custom agent by name.
+	// 4. Create a session referencing a custom agent by name. The server
+	//    uses the agent's prompt and model from the patched config.
 	const agentName = "code_quality_reviewer"
 	resp, err := client.SessionCreate(ctx, nil, opencode.SessionCreateJSONRequestBody{
 		Title: opencode.Ptr("Custom agent demo"),
 		Agent: opencode.Ptr(agentName),
+		Model: &struct {
+			Id         string  `json:"id"`
+			ProviderID string  `json:"providerID"`
+			Variant    *string `json:"variant,omitempty"`
+		}{Id: "big-pickle", ProviderID: "opencode"},
 	})
 	if err != nil {
 		log.Fatalf("create session: %v", err)
@@ -137,11 +124,13 @@ func main() {
 	sessionID := session.Id
 	fmt.Printf("\nSession: %s (agent: %s)\n\n", sessionID, agentName)
 
-	// 7. Send an async prompt — the system prompt lives in the agent config.
+	// 6. Send an async prompt — the system prompt lives in the agent config.
+	//    A simple prompt keeps the example focused on the
+	//    ConfigUpdate -> agent-by-name round-trip.
 	promptResp, err := client.SessionPromptAsync(ctx, sessionID, nil,
 		opencode.SessionPromptAsyncJSONRequestBody(
 			opencode.TextPromptAsyncBody(
-				"Review the main.go file for bugs, style issues, and potential improvements. Be concise.",
+				"Say hello in one sentence.",
 			),
 		),
 	)
@@ -150,7 +139,7 @@ func main() {
 	}
 	defer promptResp.Body.Close()
 
-	// 8. Stream the response until the session goes idle.
+	// 7. Stream the response until the session goes idle.
 	for stream.Next() {
 		ev := stream.Event()
 		switch sse.EventType(ev) {
@@ -161,6 +150,15 @@ func main() {
 				continue
 			}
 			if d.Properties.SessionID == sessionID {
+				fmt.Print(d.Properties.Delta)
+			}
+
+		case "message.part.delta":
+			d, err := sse.EventAs[opencode.EventMessagePartDelta](ev)
+			if err != nil {
+				continue
+			}
+			if d.Properties.SessionID == sessionID && d.Properties.Field == "text" {
 				fmt.Print(d.Properties.Delta)
 			}
 
@@ -232,20 +230,6 @@ func updateConfig(ctx context.Context, client *opencode.Client, cfg *opencode.Co
 	return nil
 }
 
-// listAgents returns the runtime agent roster from GET /agent.
-func listAgents(ctx context.Context, client *opencode.Client) ([]opencode.Agent, error) {
-	resp, err := client.AppAgents(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	var agents []opencode.Agent
-	if err := json.NewDecoder(resp.Body).Decode(&agents); err != nil {
-		return nil, err
-	}
-	return agents, nil
-}
-
 // mergeAgent additively sets a custom agent entry in Config.Agent.
 // The named built-in agents (build, plan, general, ...) are untouched.
 func mergeAgent(cfg *opencode.Config, key, prompt, description string) {
@@ -259,6 +243,7 @@ func mergeAgent(cfg *opencode.Config, key, prompt, description string) {
 		Prompt:      opencode.Ptr(prompt),
 		Mode:        opencode.Ptr(opencode.AgentConfigModePrimary),
 		Description: opencode.Ptr(description),
+		Model:       opencode.Ptr("big-pickle"),
 	}
 }
 
@@ -294,14 +279,4 @@ func printAgents(cfg *opencode.Config) {
 	for name := range cfg.Agent.AdditionalProperties {
 		fmt.Printf("  %s\n", name)
 	}
-}
-
-// agentExists reports whether an agent with the given name is in the list.
-func agentExists(agents []opencode.Agent, name string) bool {
-	for _, a := range agents {
-		if a.Name == name {
-			return true
-		}
-	}
-	return false
 }

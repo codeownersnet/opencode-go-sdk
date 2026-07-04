@@ -98,6 +98,11 @@ func main() {
 func scaffold(ctx context.Context, client *opencode.ClientWithResponses, task scaffoldTask) (string, error) {
 	createResp, err := client.SessionCreateWithResponse(ctx, nil, opencode.SessionCreateJSONRequestBody{
 		Title: opencode.Ptr(task.title),
+		Model: &struct {
+			Id         string  `json:"id"`
+			ProviderID string  `json:"providerID"`
+			Variant    *string `json:"variant,omitempty"`
+		}{Id: "big-pickle", ProviderID: "opencode"},
 	})
 	if err != nil {
 		return "", fmt.Errorf("create session %q: %w", task.title, err)
