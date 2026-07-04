@@ -1,9 +1,16 @@
 # Binaries
 /examples/examples
-/examples/main
+/examples/quickstart/quickstart
+/examples/streaming-review/streaming-review
+/examples/parallel-scaffold/parallel-scaffold
+/examples/auto-approve/auto-approve
+/examples/commit-message/commit-message
+/examples/export-chat/export-chat
+/chat-export.md
 /bin/
 /dist/
 
+.opencode/plans
 # Editor / OS
 .DS_Store
 .idea/

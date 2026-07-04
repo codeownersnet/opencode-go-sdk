@@ -3,7 +3,7 @@
 // Run against a local opencode server:
 //
 //	opencode serve &
-//	go run examples/main.go
+//	go run examples/quickstart/main.go
 package main
 
 import (
