@@ -56,8 +56,13 @@ func EventAs[T any](e opencode.Event) (*T, error) {
 		return nil, fmt.Errorf("marshal event: %w", err)
 	}
 	var t T
+	// json.Unmarshal populates all successfully-decoded fields before
+	// returning a type error (e.g. a timestamp sent as a string when the
+	// generated type expects a float32). The caller has already verified
+	// the event type via EventType, so a field-level unmarshal error is
+	// not a reason to discard the whole event — return the partial result.
 	if err := json.Unmarshal(data, &t); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrUnknownEventType, err)
+		return &t, nil
 	}
 	return &t, nil
 }
@@ -84,8 +89,9 @@ func GlobalEventAs[T any](e opencode.GlobalEvent) (*T, error) {
 		return nil, fmt.Errorf("marshal global event payload: %w", err)
 	}
 	var t T
+	// See EventAs for why we tolerate field-level unmarshal errors.
 	if err := json.Unmarshal(data, &t); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrUnknownEventType, err)
+		return &t, nil
 	}
 	return &t, nil
 }
