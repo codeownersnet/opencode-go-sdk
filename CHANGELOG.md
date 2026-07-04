@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.2.0](https://github.com/codeownersnet/opencode-go-sdk/compare/v1.1.0...v1.2.0) (2026-07-04)
+
+
+### Features
+
+* add custom-agents example demonstrating ConfigUpdate agent injection ([28e0ea2](https://github.com/codeownersnet/opencode-go-sdk/commit/28e0ea2d2d432cf9d26e6e114f10cb06a8ed00c1))
+* add pr-review example with multi-agent orchestration ([730f3e1](https://github.com/codeownersnet/opencode-go-sdk/commit/730f3e169c38c91adb623064456950ea75001d8e))
+* add pr-review example, API.md reference, and docs-sync rule ([f902fd6](https://github.com/codeownersnet/opencode-go-sdk/commit/f902fd6341b7d84746ad7a876494cd5ec3e957c9))
+* use big-pickle model and handle message.part.delta events in examples ([f082657](https://github.com/codeownersnet/opencode-go-sdk/commit/f082657afc8304435f6dbaf072a86dfc886d2d6a))
+* use big-pickle model and handle message.part.delta events in examples ([52e92fa](https://github.com/codeownersnet/opencode-go-sdk/commit/52e92fa66ff6d9a5bb7548a10b6ed48e8a763438))
+
+
+### Bug Fixes
+
+* address code review findings — CI, SSE errors, examples, cleanup ([d2c4bec](https://github.com/codeownersnet/opencode-go-sdk/commit/d2c4becd11b265ed9c7b4308ed9e777ba376c42a))
+* address code review findings — CI, SSE errors, examples, cleanup ([6e2477d](https://github.com/codeownersnet/opencode-go-sdk/commit/6e2477d7ab57681e17416bed8dea24bc9bb9a718))
+* marshal prompt parts and tolerate field-level SSE unmarshal errors ([12ecdec](https://github.com/codeownersnet/opencode-go-sdk/commit/12ecdecdacd2444c98d4b9943c263179543dcfab))
+* prompt part marshaling + SSE event decoding, add custom-agents example ([62eda1a](https://github.com/codeownersnet/opencode-go-sdk/commit/62eda1ad380a36692b367e39f7aa4099e3bf955f))
+
 ## [1.1.0](https://github.com/codeownersnet/opencode-go-sdk/compare/v1.0.0...v1.1.0) (2026-07-04)
 
 
