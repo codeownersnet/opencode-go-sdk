@@ -33,6 +33,14 @@ func main() {
 	if server == "" {
 		server = "http://localhost:4096"
 	}
+	model := os.Getenv("OPENCODE_MODEL")
+	if model == "" {
+		model = "big-pickle"
+	}
+	provider := os.Getenv("OPENCODE_PROVIDER")
+	if provider == "" {
+		provider = "opencode"
+	}
 
 	ctx := context.Background()
 	client, err := opencode.NewClientWithResponses(server)
@@ -67,7 +75,7 @@ func main() {
 		wg.Add(1)
 		go func(i int, task scaffoldTask) {
 			defer wg.Done()
-			ids[i], errs[i] = scaffold(ctx, client, task)
+			ids[i], errs[i] = scaffold(ctx, client, task, model, provider)
 		}(i, task)
 	}
 	wg.Wait()
@@ -95,14 +103,14 @@ func main() {
 
 // scaffold creates a session and sends a synchronous prompt, returning the
 // session ID or an error.
-func scaffold(ctx context.Context, client *opencode.ClientWithResponses, task scaffoldTask) (string, error) {
+func scaffold(ctx context.Context, client *opencode.ClientWithResponses, task scaffoldTask, model, provider string) (string, error) {
 	createResp, err := client.SessionCreateWithResponse(ctx, nil, opencode.SessionCreateJSONRequestBody{
 		Title: opencode.Ptr(task.title),
 		Model: &struct {
 			Id         string  `json:"id"`
 			ProviderID string  `json:"providerID"`
 			Variant    *string `json:"variant,omitempty"`
-		}{Id: "big-pickle", ProviderID: "opencode"},
+		}{Id: model, ProviderID: provider},
 	})
 	if err != nil {
 		return "", fmt.Errorf("create session %q: %w", task.title, err)

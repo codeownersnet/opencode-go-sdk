@@ -27,6 +27,14 @@ func main() {
 	if server == "" {
 		server = "http://localhost:4096"
 	}
+	model := os.Getenv("OPENCODE_MODEL")
+	if model == "" {
+		model = "big-pickle"
+	}
+	provider := os.Getenv("OPENCODE_PROVIDER")
+	if provider == "" {
+		provider = "opencode"
+	}
 
 	ctx := context.Background()
 	client, err := opencode.NewClientWithResponses(server)
@@ -78,7 +86,7 @@ func main() {
 			Id         string  `json:"id"`
 			ProviderID string  `json:"providerID"`
 			Variant    *string `json:"variant,omitempty"`
-		}{Id: "big-pickle", ProviderID: "opencode"},
+		}{Id: model, ProviderID: provider},
 	})
 	if err != nil {
 		log.Fatalf("create session: %v", err)

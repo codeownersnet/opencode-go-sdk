@@ -27,6 +27,14 @@ func main() {
 	if server == "" {
 		server = "http://localhost:4096"
 	}
+	model := os.Getenv("OPENCODE_MODEL")
+	if model == "" {
+		model = "big-pickle"
+	}
+	provider := os.Getenv("OPENCODE_PROVIDER")
+	if provider == "" {
+		provider = "opencode"
+	}
 
 	ctx := context.Background()
 	client, err := opencode.NewClient(server)
@@ -48,7 +56,7 @@ func main() {
 			Id         string  `json:"id"`
 			ProviderID string  `json:"providerID"`
 			Variant    *string `json:"variant,omitempty"`
-		}{Id: "big-pickle", ProviderID: "opencode"},
+		}{Id: model, ProviderID: provider},
 	})
 	if err != nil {
 		log.Fatalf("create session: %v", err)
@@ -111,14 +119,16 @@ func main() {
 			if err != nil {
 				continue
 			}
-			fmt.Print(d.Properties.Delta)
+			if d.Properties.SessionID == sessionID {
+				fmt.Print(d.Properties.Delta)
+			}
 
 		case "message.part.delta":
 			d, err := sse.EventAs[opencode.EventMessagePartDelta](ev)
 			if err != nil {
 				continue
 			}
-			if d.Properties.Field == "text" {
+			if d.Properties.SessionID == sessionID && d.Properties.Field == "text" {
 				fmt.Print(d.Properties.Delta)
 			}
 
@@ -127,15 +137,29 @@ func main() {
 			if err != nil {
 				continue
 			}
-			fmt.Printf("\n[tool] %s\n", tc.Properties.Tool)
+			if tc.Properties.SessionID == sessionID {
+				fmt.Printf("\n[tool] %s\n", tc.Properties.Tool)
+			}
 
 		case "session.idle":
-			fmt.Println("\n\nDone — session is idle.")
-			return
+			si, err := sse.EventAs[opencode.EventSessionIdle](ev)
+			if err != nil {
+				continue
+			}
+			if si.Properties.SessionID == sessionID {
+				fmt.Println("\n\nDone — session is idle.")
+				return
+			}
 
 		case "session.error":
-			log.Printf("session error event received")
-			return
+			se, err := sse.EventAs[opencode.EventSessionError](ev)
+			if err != nil {
+				continue
+			}
+			if se.Properties.SessionID != nil && *se.Properties.SessionID == sessionID {
+				log.Printf("session error event received")
+				return
+			}
 		}
 	}
 	if err := stream.Err(); err != nil {

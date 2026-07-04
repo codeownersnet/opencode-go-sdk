@@ -63,6 +63,14 @@ func main() {
 	if server == "" {
 		server = "http://localhost:4096"
 	}
+	model := os.Getenv("OPENCODE_MODEL")
+	if model == "" {
+		model = "big-pickle"
+	}
+	provider := os.Getenv("OPENCODE_PROVIDER")
+	if provider == "" {
+		provider = "opencode"
+	}
 
 	ctx := context.Background()
 	client, err := opencode.NewClient(server)
@@ -80,10 +88,10 @@ func main() {
 
 	// 2. Merge in the custom agents (additive — existing config preserved).
 	for _, a := range customAgents {
-		mergeAgent(cfg, a.key, a.prompt, a.description)
+		mergeAgent(cfg, a.key, a.prompt, a.description, provider+"/"+model)
 	}
 
-	// 4. PATCH the merged config back to the server. The agents are now
+	// 3. PATCH the merged config back to the server. The agents are now
 	//    available in-memory for session creation.
 	if err := updateConfig(ctx, client, cfg); err != nil {
 		log.Fatalf("update config: %v", err)
@@ -93,7 +101,7 @@ func main() {
 		fmt.Printf("  %s\n", a.key)
 	}
 
-	// 3. Subscribe to per-instance events after the PATCH so we receive
+	// 4. Subscribe to per-instance events after the PATCH so we receive
 	//    events for the session we're about to create.
 	stream, err := sse.SubscribeEvents(ctx, client, nil)
 	if err != nil {
@@ -101,7 +109,7 @@ func main() {
 	}
 	defer stream.Close()
 
-	// 4. Create a session referencing a custom agent by name. The server
+	// 5. Create a session referencing a custom agent by name. The server
 	//    uses the agent's prompt and model from the patched config.
 	const agentName = "code_quality_reviewer"
 	resp, err := client.SessionCreate(ctx, nil, opencode.SessionCreateJSONRequestBody{
@@ -111,7 +119,7 @@ func main() {
 			Id         string  `json:"id"`
 			ProviderID string  `json:"providerID"`
 			Variant    *string `json:"variant,omitempty"`
-		}{Id: "big-pickle", ProviderID: "opencode"},
+		}{Id: model, ProviderID: provider},
 	})
 	if err != nil {
 		log.Fatalf("create session: %v", err)
@@ -125,8 +133,6 @@ func main() {
 	fmt.Printf("\nSession: %s (agent: %s)\n\n", sessionID, agentName)
 
 	// 6. Send an async prompt — the system prompt lives in the agent config.
-	//    A simple prompt keeps the example focused on the
-	//    ConfigUpdate -> agent-by-name round-trip.
 	promptResp, err := client.SessionPromptAsync(ctx, sessionID, nil,
 		opencode.SessionPromptAsyncJSONRequestBody(
 			opencode.TextPromptAsyncBody(
@@ -232,7 +238,7 @@ func updateConfig(ctx context.Context, client *opencode.Client, cfg *opencode.Co
 
 // mergeAgent additively sets a custom agent entry in Config.Agent.
 // The named built-in agents (build, plan, general, ...) are untouched.
-func mergeAgent(cfg *opencode.Config, key, prompt, description string) {
+func mergeAgent(cfg *opencode.Config, key, prompt, description, model string) {
 	if cfg.Agent == nil {
 		cfg.Agent = &opencode.Config_Agent{}
 	}
@@ -243,7 +249,7 @@ func mergeAgent(cfg *opencode.Config, key, prompt, description string) {
 		Prompt:      opencode.Ptr(prompt),
 		Mode:        opencode.Ptr(opencode.AgentConfigModePrimary),
 		Description: opencode.Ptr(description),
-		Model:       opencode.Ptr("big-pickle"),
+		Model:       opencode.Ptr(model),
 	}
 }
 

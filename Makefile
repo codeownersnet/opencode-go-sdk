@@ -3,7 +3,7 @@
 # Targets:
 #   make pull       Fetch upstream openapi.json -> opencode-spec.json
 #   make pull-local Fetch spec from a local opencode server (OPENCODE_SERVER)
-#   make generate   Run oapi-codegen to produce types.gen.go + client.gen.go
+#   make generate   Run oapi-codegen to produce opencode.gen.go
 #   make test       Run go test
 #   make regen      pull + generate + test (the full refresh loop)
 #   make check      Validate generation is up to date (no drift)

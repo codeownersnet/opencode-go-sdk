@@ -9,6 +9,9 @@ import (
 // client. The opencode server supports password-based authentication when
 // configured with a password.
 //
+// Use with HTTPS for non-localhost endpoints; basic auth over plain HTTP
+// exposes the password.
+//
 //	client, _ := opencode.NewClient("http://localhost:4096", opencode.WithBasicAuth("s3cret"))
 func WithBasicAuth(password string) ClientOption {
 	return func(c *Client) error {

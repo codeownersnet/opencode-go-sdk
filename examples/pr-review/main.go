@@ -130,6 +130,14 @@ func main() {
 	if server == "" {
 		server = "http://localhost:4096"
 	}
+	model := os.Getenv("OPENCODE_MODEL")
+	if model == "" {
+		model = "big-pickle"
+	}
+	provider := os.Getenv("OPENCODE_PROVIDER")
+	if provider == "" {
+		provider = "opencode"
+	}
 
 	ctx := context.Background()
 	client, err := opencode.NewClient(server)
@@ -215,7 +223,7 @@ func main() {
 	states := make([]*reviewerState, 0, len(specs))
 	bySession := make(map[string]*reviewerState, len(specs))
 	for _, spec := range specs {
-		id, err := createSession(ctx, client, spec.name+" review")
+		id, err := createSession(ctx, client, spec.name+" review", model, provider)
 		if err != nil {
 			log.Fatalf("create %s session: %v", spec.name, err)
 		}
@@ -305,7 +313,7 @@ func main() {
 				fmt.Printf("\n  [%s reviewer done]\n", st.spec.name)
 				if phase == "reviewers" && allReviewersDone(states) {
 					phase = "coordinator"
-					coordinatorID = launchCoordinator(ctx, client, states, diff.String())
+					coordinatorID = launchCoordinator(ctx, client, states, diff.String(), model, provider)
 				}
 			} else if id == coordinatorID {
 				fmt.Println("\n\n— review complete —")
@@ -332,7 +340,7 @@ func main() {
 				// may never emit session.idle, so we must not wait for it.
 				if phase == "reviewers" && allReviewersDone(states) {
 					phase = "coordinator"
-					coordinatorID = launchCoordinator(ctx, client, states, diff.String())
+					coordinatorID = launchCoordinator(ctx, client, states, diff.String(), model, provider)
 				}
 			} else if phase == "coordinator" && id == coordinatorID {
 				fmt.Println("\n\n[coordinator errored — partial review above]")
@@ -346,14 +354,14 @@ func main() {
 }
 
 // createSession creates an opencode session and returns its ID.
-func createSession(ctx context.Context, client *opencode.Client, title string) (string, error) {
+func createSession(ctx context.Context, client *opencode.Client, title, model, provider string) (string, error) {
 	resp, err := client.SessionCreate(ctx, nil, opencode.SessionCreateJSONRequestBody{
 		Title: opencode.Ptr(title),
 		Model: &struct {
 			Id         string  `json:"id"`
 			ProviderID string  `json:"providerID"`
 			Variant    *string `json:"variant,omitempty"`
-		}{Id: "big-pickle", ProviderID: "opencode"},
+		}{Id: model, ProviderID: provider},
 	})
 	if err != nil {
 		return "", err
@@ -382,9 +390,9 @@ func sendAsyncPrompt(ctx context.Context, client *opencode.Client, sessionID, pr
 // launchCoordinator creates the coordinator session, sends it the
 // consolidated findings from all reviewers, and returns its session ID.
 // The caller streams the coordinator's deltas from the SSE loop.
-func launchCoordinator(ctx context.Context, client *opencode.Client, states []*reviewerState, diff string) string {
+func launchCoordinator(ctx context.Context, client *opencode.Client, states []*reviewerState, diff, model, provider string) string {
 	prompt := buildCoordinatorPrompt(states, diff)
-	id, err := createSession(ctx, client, "Review coordinator")
+	id, err := createSession(ctx, client, "Review coordinator", model, provider)
 	if err != nil {
 		log.Fatalf("create coordinator session: %v", err)
 	}

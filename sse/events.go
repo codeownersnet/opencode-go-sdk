@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 
 	opencode "github.com/codeownersnet/opencode-go-sdk"
 )
 
-// ErrUnknownEventType is returned by EventAs/GlobalEventAs when the event's
-// variant type is not known to the caller (i.e. a new event type added
-// upstream that the caller hasn't opted into yet). This sentinel error lets
-// callers distinguish "unknown type" from JSON decode failures.
+// ErrUnknownEventType is a sentinel available for callers that want to
+// distinguish unrecognized event payloads from field-level decode errors.
+// EventAs returns the decoded variant and any error encountered during
+// decoding; callers may use errors.Is to check for this sentinel.
 var ErrUnknownEventType = errors.New("opencode/sse: unknown event type")
 
 // rawEventType is a helper struct for extracting the "type" discriminator
@@ -37,8 +38,13 @@ func EventType(e opencode.Event) string {
 }
 
 // EventAs deserializes an Event into a concrete variant type T (e.g.
-// opencode.EventSessionUpdated). Returns ErrUnknownEventType if the JSON
-// cannot be decoded into T.
+// opencode.EventSessionUpdated). Returns the decoded variant and any error
+// encountered during decoding.
+//
+// On field-level unmarshal errors (e.g. a timestamp sent as a string when
+// the generated type expects a float32), the result is still populated with
+// successfully-decoded fields; the error describes the failed fields. The
+// caller should check the error but can still use the populated fields.
 //
 // Callers should switch on EventType first, then call EventAs with the
 // matching variant type. EventAs does not validate that the event's type
@@ -58,11 +64,11 @@ func EventAs[T any](e opencode.Event) (*T, error) {
 	var t T
 	// json.Unmarshal populates all successfully-decoded fields before
 	// returning a type error (e.g. a timestamp sent as a string when the
-	// generated type expects a float32). The caller has already verified
-	// the event type via EventType, so a field-level unmarshal error is
-	// not a reason to discard the whole event — return the partial result.
+	// generated type expects a float32). Return the partial result so the
+	// caller gets the populated fields; the error lets them decide whether
+	// to tolerate field-level unmarshal failures.
 	if err := json.Unmarshal(data, &t); err != nil {
-		return &t, nil
+		return &t, err
 	}
 	return &t, nil
 }
@@ -89,9 +95,9 @@ func GlobalEventAs[T any](e opencode.GlobalEvent) (*T, error) {
 		return nil, fmt.Errorf("marshal global event payload: %w", err)
 	}
 	var t T
-	// See EventAs for why we tolerate field-level unmarshal errors.
+	// See EventAs for why we return the partial result with the error.
 	if err := json.Unmarshal(data, &t); err != nil {
-		return &t, nil
+		return &t, err
 	}
 	return &t, nil
 }
@@ -104,6 +110,7 @@ func SubscribeEvents(ctx context.Context, c *opencode.Client, params *opencode.E
 		return nil, fmt.Errorf("subscribe events: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
+		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 		return nil, fmt.Errorf("subscribe events: unexpected status %s", resp.Status)
 	}
@@ -119,6 +126,7 @@ func SubscribeGlobalEvents(ctx context.Context, c *opencode.Client) (*Stream[ope
 		return nil, fmt.Errorf("subscribe global events: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
+		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 		return nil, fmt.Errorf("subscribe global events: unexpected status %s", resp.Status)
 	}

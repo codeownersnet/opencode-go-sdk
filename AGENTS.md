@@ -26,9 +26,11 @@ The upstream spec is OpenAPI 3.1.0; `scripts/pull-and-normalize.go` down-convert
 The `Event` and `GlobalEvent` unions grow over time as upstream adds event variants. Custom SSE helpers handle this without breaking:
 
 - `EventType(e)` returns the variant's `type` string; for unknown/missing variants it returns `""` (never panics).
-- `EventAs[T](e)` returns a typed `*T` for known variants and `ErrUnknownEventType` for unknown ones.
+- `EventAs[T](e)` returns a typed `*T` and any error encountered during decoding. On field-level unmarshal errors (e.g. a timestamp sent as a string when the generated type expects `float32`), the result is still populated with successfully-decoded fields; the error describes the failed fields.
 
 **Adding a variant upstream never breaks existing custom code.** It produces a new `type` string that caller code can opt into later.
+
+> **Exception:** `prompt.go` defines `MarshalJSON`/`UnmarshalJSON` on the `*_Parts_Item` union types, which requires accessing their unexported `union` field. This is a deliberate tripwire — if the field is renamed upstream, the build fails loudly. The access is necessary because `oapi-codegen` generates no accessor methods for these specific union types.
 
 ### Compile-time tripwire
 

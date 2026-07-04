@@ -9,16 +9,20 @@ package sse
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"strings"
 )
+
+// MaxFrameBytes is the maximum size of a single SSE frame. Frames larger than
+// this cap will terminate the stream with an error.
+const MaxFrameBytes = 1024 * 1024
 
 // frame represents a single Server-Sent Event frame.
 type frame struct {
 	event string // the "event:" field (rarely used by opencode)
 	data  strings.Builder
 	id    string
-	retry int
 }
 
 // reader reads SSE frames from an io.Reader.
@@ -30,7 +34,7 @@ type reader struct {
 
 func newReader(r io.Reader) *reader {
 	s := bufio.NewScanner(r)
-	s.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	s.Buffer(make([]byte, 0, 64*1024), MaxFrameBytes)
 	return &reader{scanner: s}
 }
 
@@ -61,15 +65,13 @@ func (r *reader) next() bool {
 			r.frame.event = strings.TrimSpace(strings.TrimPrefix(line, "event:"))
 		case strings.HasPrefix(line, "id:"):
 			r.frame.id = strings.TrimSpace(strings.TrimPrefix(line, "id:"))
-		case strings.HasPrefix(line, "retry:"):
-			// Retry field is informational; we don't auto-reconnect here.
 		default:
 			// Unknown field; ignore per SSE spec.
 		}
 	}
 
 	if err := r.scanner.Err(); err != nil {
-		r.err = err
+		r.err = fmt.Errorf("sse: frame exceeds %d bytes: %w", MaxFrameBytes, err)
 	} else if len(dataLines) > 0 {
 		// EOF with a pending event (no trailing blank line).
 		r.frame.data.WriteString(strings.Join(dataLines, "\n"))
