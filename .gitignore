@@ -6,6 +6,7 @@
 /examples/auto-approve/auto-approve
 /examples/commit-message/commit-message
 /examples/export-chat/export-chat
+/examples/pr-review/pr-review
 /chat-export.md
 /bin/
 /dist/

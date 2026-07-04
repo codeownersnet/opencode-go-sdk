@@ -66,6 +66,7 @@ The [`examples/`](examples) directory contains runnable programs demonstrating d
 |---|---|---|
 | [`examples/quickstart/`](examples/quickstart/) | Quickstart: health check, SSE subscribe, session create, event loop. | `go run examples/quickstart/main.go` |
 | [`examples/streaming-review/`](examples/streaming-review/) | Stream a code review in real time — print text deltas and log tool calls via SSE. | `go run examples/streaming-review/main.go` |
+| [`examples/pr-review/`](examples/pr-review/) | Review a pull request with specialised AI agents (security, performance, code quality) plus a coordinator judge pass — multi-session orchestration on one SSE stream. | `go run examples/pr-review/main.go` |
 | [`examples/parallel-scaffold/`](examples/parallel-scaffold/) | Generate multiple code artifacts concurrently using parallel sessions and synchronous prompts. | `go run examples/parallel-scaffold/main.go` |
 | [`examples/auto-approve/`](examples/auto-approve/) | Auto-approve tool permissions for hands-off coding — monitor `permission.asked` events and respond automatically. | `go run examples/auto-approve/main.go` |
 | [`examples/commit-message/`](examples/commit-message/) | Generate a Conventional Commit message from a git diff — composes VCS endpoints with session prompts. | `go run examples/commit-message/main.go` |
